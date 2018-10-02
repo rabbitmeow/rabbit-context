@@ -1,11 +1,10 @@
 {
   "name": "rabbit-context",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "",
   "main": "index.js",
   "typings": "index.d.ts",
-  "scripts": {
-  },
+  "scripts": {},
   "repository": {
     "type": "git",
     "url": "https://github.com/rabbitmeow/rabbit-context.git"
@@ -17,5 +16,8 @@
   ],
   "author": "rabbit",
   "license": "MIT",
-  "npmName": "rabbit-context"
+  "npmName": "rabbit-context",
+  "dependencies": {
+    "react": "^16.3.0"
+  }
 }
