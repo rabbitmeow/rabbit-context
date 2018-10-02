@@ -1,0 +1,55 @@
+body {
+  margin: 0;
+}
+
+h2 {
+  margin: 0;
+}
+
+.card-container {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.card {
+  position: relative;
+  flex: 1;
+  margin: 10px;
+  padding: 20px;
+  border-radius: 15px;
+}
+
+.close-btn {
+  position: absolute;
+  margin: 10px;
+  top: 0;
+  right: 0;
+  width: 32px;
+  display: block;
+}
+
+button {
+  background-color: #f6f6f6;
+  border: solid #d8d8d8 1px;
+  border-radius: 20px;
+  padding: 8px;
+  width: 150px;
+  cursor: pointer;
+  outline: none;
+}
+
+input {
+  border-radius: 20px;
+  width: 300px;
+  border: solid #d8d8d8 1px;
+  padding: 8px;
+  margin: 2px;
+  outline: none;
+  background-color: #f6f6f6;
+}
+
+input:focus,
+button:focus {
+  background-color: #fff;
+  border-color: #c7c7c7;
+}

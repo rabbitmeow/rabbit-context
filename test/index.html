@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>rabbit-context test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" type="text/css" media="screen" href="./main.css" />
+
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <script src="https://unpkg.com/react@16/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js" crossorigin></script>
+
+  <!-- <script src="./dist/babel.js"></script>
+  <script src="./dist/react.development.js"></script>
+  <script src="./dist/react-dom.development.js"></script> -->
+</head>
+<body>
+  <div id="root"></div>
+</body>
+</html>
+
+<script type="text/babel">
+
+const $$contexts = Symbol ? Symbol('contexts') : 'rabbit-23333'
+const $$reactContext = Symbol ? Symbol('react-context') : 'rabbit-23334'
+const $$oneTimeUse = Symbol ? Symbol('one-time-use') : 'rabbit-23335'
+const $$keys = Symbol ? Symbol('keys') : 'rabbit-23336'
+
+const $maskedKeys = new Set([
+  'props',
+  'state',
+  'context',
+  'refs',
+  'updater',
+  '_reactInternalFiber',
+  '_reactInternalInstance',
+  'setState',
+  'forceUpdate',
+
+  'constructor',
+  'getDerivedStateFromProps',
+  'render',
+  'componentDidMount',
+  'shouldComponentUpdate',
+  'componentDidUpdate',
+  'componentDidCatch',
+  'componentWillUnmount',
+
+  'componentWillReceiveProps',
+  'UNSAFE_componentWillReceiveProps',
+  'componentWillMount',
+  'UNSAFE_componentWillMount',
+  'componentWillUpdate',
+  'UNSAFE_componentWillUpdate'
+])
+
+function setReactContext(reactContext) {
+  // if (this[$reactContext]) {
+  //   throw new Error('A context can only be used one time.')
+  // }
+  this[$$reactContext] = reactContext
+}
+function clearReactContext() {
+  this[$$reactContext] = null
+}
+
+function nestComponents(components) {
+  return function $ComponentNester({children}) {
+    if (React.isValidElement(children)) {
+      children = React.cloneElement(children)
+    }
+    const nester = (wrappedElement, wrapperComponent) => React.createElement(wrapperComponent, null, wrappedElement)
+    if (children !== undefined) {
+      return components.reduceRight(nester, children)
+    }
+    return components.reduceRight(nester)
+  }
+}
+
+function compose(func) {
+  return func.reduce((a, b) => arg => a(b(arg)))
+}
+
+class Provider extends React.Component {
+  constructor(props) {
+    super(props)
+    this[$$oneTimeUse] = true
+    this[$$reactContext] = React.createContext()
+  }
+  componentWillUnmount() {
+    this.props.clearReactContext()
+  }
+  render() {
+    if (this[$$oneTimeUse]) {
+      this.props.setReactContext(this[$$reactContext])
+      const set = new Set(Object.getOwnPropertyNames(Object.getPrototypeOf(this)).concat(Object.keys(this)))
+      this[$$keys] = [...set.values()].filter(key => !key.startsWith('_') && !$maskedKeys.has(key))
+      
+      this[$$oneTimeUse] = false
+    }
+    const values = this[$$keys].reduce((obj, key) => {
+      obj[key] = this[key]
+      return obj
+    }, {})
+    const {props: {children}, state} = this
+    return React.createElement(this[$$reactContext].Provider, {value: Object.assign(values, state)}, React.cloneElement(children))
+  }
+}
+
+class Context {
+  constructor(Providers, smartTransform = true) {
+    if (Providers == null || (typeof Providers !== 'object' && Object.getPrototypeOf(Providers) !== Provider)) {
+      throw new TypeError('Context: type is invalid -- expected an object or Context.Provider but got: ' + typeof Providers + '.')
+    }
+    if (Object.getPrototypeOf(Providers) === Provider) {
+      this[$$reactContext] = null
+      const contactor = {
+        setReactContext: setReactContext.bind(this),
+        clearReactContext: clearReactContext.bind(this)
+      }
+      const self = this, _Provider = this.Provider
+      this.Provider = function Provider(props) {
+        return _Provider.call(self, Providers, contactor, props)
+      }
+      return
+    }
+    const providersArray = []
+    this[$$contexts] = Object.keys(Providers).reduce((ctxs, key) => {
+      const context = new Context(Providers[key])
+      providersArray.push(context.Provider)
+      ctxs[smartTransform && key.endsWith('Provider') && key.length > 8 ? `${key[0].toLowerCase()}${key.substr(1, key.length - 9)}` : key] = context
+      return ctxs
+    }, {})
+    if (providersArray.length === 0) {
+      throw new TypeError('No Providers in Object.')
+    }
+    this.Provider = nestComponents(providersArray)
+  }
+  Provider(Provider, contactor, {children}) {
+    return React.createElement(Provider, contactor, children)
+  }
+  inject(Component) {
+    if (typeof Component !== 'function') {
+      throw new TypeError('Context.inject: type is invalid -- expected a React.Component but got: ' + typeof Component + '.')
+    }
+    const contexts = this[$$contexts]
+    if (!contexts) {
+      const self = this
+      return function $InjectWrapper(props) {
+        return React.createElement(self[$$reactContext].Consumer, null, value => React.createElement(Component, Object.assign({}, value, props)))
+      }
+    }
+
+    let storeProps = null
+    const wrapped = Object.keys(contexts).map(key => {
+      const context = contexts[key]
+
+      return function (child) {
+        return function $Composer(preKey, values) {
+          if (preKey && !(preKey in storeProps)) {
+            storeProps[preKey] = values
+          }
+          return React.createElement(context[$$reactContext].Consumer, null, child.bind(null, key))
+        }
+      }
+    })
+    
+    const Bound$Composer = compose(wrapped)((key, values) => {
+      if (!(key in storeProps)) {
+        storeProps[key] = values
+      }
+      return React.createElement(Component, storeProps)
+    }).bind(null, null)
+
+    return function $ConsumerWrapper(props) {
+      storeProps = Object.assign({}, props)
+      return React.createElement(Bound$Composer)
+    }
+  }
+}
+Context.Provider = Provider
+
+</script>
+
+
+
+<script type="text/babel">
+
+class ProfileProvider extends Context.Provider {
+  constructor(props) {
+    super(props)
+    this.state = {name: 'rabbit', age: 21, gender: 'male'}
+    Object.assign(this, Object.keys(this.state).reduce((obj, key) => {
+      obj['update' + key[0].toUpperCase() + key.substr(1)] = value => {
+        this.setState({[key]: value})
+      }
+      return obj
+    }, {}))
+  }
+}
+class ContactProvider extends Context.Provider {
+  constructor(props) {
+    super(props)
+    this.state = {github: 'https://github.com/rabbitmeow', email: 'rabbitmeow886@gmail.com'}
+    Object.assign(this, Object.keys(this.state).reduce((obj, key) => {
+      obj['update' + key[0].toUpperCase() + key.substr(1)] = value => {
+        this.setState({[key]: value})
+      }
+      return obj
+    }, {}))
+  }
+}
+const context1 = new Context({ProfileProvider, ContactProvider})
+
+
+function Log({props, state}) {
+  return (
+    <div>
+      props:
+      <ul>
+        {
+          Object.keys(props).filter(key => !key.startsWith('update') && key !== 'reset').map(key => <li key={key}>{key}: {JSON.stringify(props[key])}</li>)
+        }
+      </ul>
+      state:
+      <ul>
+        {
+          Object.keys(state).filter(key => !key.startsWith('update') && key !== 'reset').map(key => <li key={key}>{key}: {JSON.stringify(state[key])}</li>)
+        }
+      </ul>
+    </div>
+  )
+}
+
+function CardBox({title, handleClose, children}) {
+  return (
+    <React.Fragment>
+      <h2>{title}</h2>
+      <button className="close-btn" onClick={handleClose}>X</button>
+      <div className="card-container">
+        {children}
+      </div>
+    </React.Fragment>
+  )
+}
+
+class Card extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = {isClose: false}
+  }
+  handleClose = () => {
+    this.setState({isClose: true})
+  }
+  handleShow = () => {
+    this.setState({isClose: false})
+  }
+  render() {
+    const {handleClose, handleShow} = this
+    const {bgColor, title, children} = this.props
+    const {isClose} = this.state
+    if (isClose) {
+      return <button style={{flex: 1, minHeight: 400, margin: 10}} onClick={handleShow}>show</button>
+    }
+    return (
+      <div className="card" style={{backgroundColor: bgColor}}>
+        <CardBox title={title} handleClose={handleClose}>{children}</CardBox>
+      </div>
+    )
+  }
+}
+
+class App extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = {desc: 'I am App.', box1: 0, box2: 0, box3: 0}
+  }
+  updateDesc = desc => {
+    this.setState({desc})
+  }
+  rerender(id) {
+    this.setState(props => ({['box' + id]: props['box' + id] + 1}))
+  }
+  render() {
+    return (
+      <div style={{margin: 10, backgroundColor: '#ffc0cb85', padding: 20, borderRadius: 15}}>
+        <h2 style={{marginBottom: 10}}>App</h2>
+        <Log props={this.props} state={this.state} />
+        <div>
+          <Card title="InputsTest" bgColor="rgba(71, 0, 255, 0.09)">
+            <Card title="Input1" bgColor="#00afff3b">
+              <$TestInput key={this.state.box1} reset={this.rerender.bind(this, 1)} desc={this.state.desc} updateDesc={this.updateDesc} />
+            </Card>
+            <Card title="Input2" bgColor="#00d3ff57">
+              <$TestInput key={this.state.box2} reset={this.rerender.bind(this, 2)} desc={this.state.desc} updateDesc={this.updateDesc} />
+            </Card>
+          </Card>
+
+          <Card title="ContextsTest" bgColor="rgba(0, 255, 40, 0.22)">
+            <context2.Provider>
+              <$TestContext key={this.state.box3} reset={this.rerender.bind(this, 3)} desc={this.state.desc} updateDesc={this.updateDesc} />
+            </context2.Provider>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+}
+const $App = context1.inject(App)
+
+class TestInput extends React.Component {
+  constructor(props) {
+    super(props)
+    const {children, ...rest} = props
+    this.state = this._flatObject(rest)
+  }
+  updateInput = (name, event) => {
+    this.setState({[name]: event.target.value})
+  }
+  _flatObject(obj) {
+    return Object.keys(obj).reduce((ret, key) => {
+      if (typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+        Object.assign(ret, obj[key])
+      } else {
+        ret[key] = obj[key]
+      }
+      return ret
+    }, {})
+  }
+  render() {
+    return (
+      <div>
+        <Log props={this.props} state={this.state} />
+        <ul>
+          {
+            Object.keys(this.state).filter(key => !key.startsWith('update') && key !== 'reset').map(key => (
+              <li key={key}>
+                <input value={this.state[key]} onChange={this.updateInput.bind(null, key)} />
+                <button onClick={this.state['update' + key[0].toUpperCase() + key.substr(1)].bind(null, this.state[key])}>update {key}</button>
+              </li>
+            ))
+          }
+        </ul>
+        <button onClick={this.props.reset}>reset</button>
+      </div>
+    )
+  }
+}
+
+const $TestInput = context1.inject(TestInput)
+
+
+class OfferProvider extends Context.Provider {
+  constructor(props) {
+    super(props)
+    this.state = {begOffers: 'facebook/google/etc'}
+  }
+  updateBegOffers = begOffers => {
+    this.setState({begOffers})
+  }
+}
+const context2 = new Context(OfferProvider)
+
+class TestContext extends React.Component {
+  render() {
+    return (
+      <React.Fragment>
+        <Card title="Input1" bgColor="#00a4ff36">
+          <$TestInput {...this.props} />
+        </Card>
+        <Card title="Input2" bgColor="#ff500045">
+          <$TestInput {...this.props} />
+        </Card>
+      </React.Fragment>
+    )
+  }
+}
+const $TestContext = context2.inject(context1.inject(TestContext))
+
+
+ReactDOM.render(
+  <context1.Provider>
+    <$App />
+  </context1.Provider>,
+document.getElementById('root'))
+
+</script>

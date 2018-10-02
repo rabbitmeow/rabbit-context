@@ -1,0 +1,21 @@
+{
+  "name": "rabbit-context",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "typings": "index.d.ts",
+  "scripts": {
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rabbitmeow/rabbit-context.git"
+  },
+  "keywords": [
+    "rabbit",
+    "context",
+    "rabbit-context"
+  ],
+  "author": "rabbit",
+  "license": "MIT",
+  "npmName": "rabbit-context"
+}
