@@ -56,8 +56,8 @@ function nestComponents(components) {
   }
 }
 
-function compose(func) {
-  return func.reduce((a, b) => arg => a(b(arg)))
+function compose(funcs) {
+  return funcs.reduce((a, b) => arg => a(b(arg)))
 }
 
 class Provider extends React.Component {
@@ -111,7 +111,7 @@ class Context {
       return ctxs
     }, {})
     if (providersArray.length === 0) {
-      throw new TypeError('No Providers in Object.')
+      throw new TypeError('No Providers in object.')
     }
     this.Provider = nestComponents(providersArray)
   }
