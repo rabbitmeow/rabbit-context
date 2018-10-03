@@ -6,6 +6,7 @@
 ````jsx
 import Context from 'rabbit-context'
 
+// Everything is similar to React.Component
 class ProfileProvider extends Context.Provider {
   constructor(props) {
     super(props)
@@ -36,7 +37,9 @@ const $InjectedComponent = context.inject(AReactComponent)
 
 ##### Step 5
 ````jsx
-<$InjectedComponent {...props} />
+function AComponent(props) {
+  return <$InjectedComponent {...props} />
+}
 ````
 
 ##### That's all usages of rabbit-context, enjoy!
@@ -46,7 +49,7 @@ const $InjectedComponent = context.inject(AReactComponent)
 
 #### `Context.Provider`
 `Context.Provider` is `extends React.Component`.
-So, you can do anything same as you do in `React.Component`.
+So, you can do anything as same as you do in `React.Component`.
 But **DO NOT** write any lifecycle and `render` in your `Context.Provider`.
 
 #### `new Context(Providers: Context.Provider|object, smartTransform: boolean = true)`

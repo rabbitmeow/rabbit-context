@@ -43,12 +43,12 @@ function clearReactContext() {
   this[$$reactContext] = null
 }
 
-function nestComponents(components) {
-  return function $ComponentNester({children}) {
+function nestComponents(components, withProps = false) {
+  return function $ComponentNester({children, ...rest}) {
     if (React.isValidElement(children)) {
       children = React.cloneElement(children)
     }
-    const nester = (wrappedElement, wrapperComponent) => React.createElement(wrapperComponent, null, wrappedElement)
+    const nester = (wrappedElement, wrapperComponent) => React.createElement(wrapperComponent, withProps ? rest : null, wrappedElement)
     if (children !== undefined) {
       return components.reduceRight(nester, children)
     }
@@ -56,9 +56,6 @@ function nestComponents(components) {
   }
 }
 
-function compose(funcs) {
-  return funcs.reduce((a, b) => arg => a(b(arg)))
-}
 
 class Provider extends React.Component {
   constructor(props) {
@@ -130,31 +127,19 @@ class Context {
       }
     }
 
-    let storeProps = null
     const wrapped = Object.keys(contexts).map(key => {
       const context = contexts[key]
-
-      return function (child) {
-        return function $Composer(preKey, values) {
-          if (preKey && !(preKey in storeProps)) {
-            storeProps[preKey] = values
-          }
-          return React.createElement(context[$$reactContext].Consumer, null, child.bind(null, key))
-        }
+      return function $ConsumerWrapper({children, ...rest}) {
+        return React.createElement(context[$$reactContext].Consumer, null, value => {
+          const props = key in rest ? rest : Object.assign({[key]: value}, rest)
+          return React.isValidElement(children) ? React.cloneElement(children, props) : React.createElement(children, props)
+        })
       }
     })
-    
-    const Bound$Composer = compose(wrapped)((key, values) => {
-      if (!(key in storeProps)) {
-        storeProps[key] = values
-      }
-      return React.createElement(Component, storeProps)
-    }).bind(null, null)
-
-    return function $ConsumerWrapper(props) {
-      storeProps = Object.assign({}, props)
-      return React.createElement(Bound$Composer)
-    }
+    wrapped.push(function $ComponentWrapper(props) {
+      return React.createElement(Component, props)
+    })
+    return nestComponents(wrapped, true)
   }
 }
 Context.Provider = Provider

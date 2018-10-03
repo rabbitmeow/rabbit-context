@@ -19,27 +19,29 @@ h2 {
   border-radius: 15px;
 }
 
+button {
+  background-color: #f6f6f6;
+  border: solid #d8d8d8 1px;
+  border-radius: 8px;
+  padding: 8px;
+  min-width: 150px;
+  cursor: pointer;
+  outline: none;
+}
+
 .close-btn {
   position: absolute;
   margin: 10px;
   top: 0;
   right: 0;
-  width: 32px;
+  min-width: 0;
+  width: 31px;
   display: block;
-}
-
-button {
-  background-color: #f6f6f6;
-  border: solid #d8d8d8 1px;
-  border-radius: 20px;
-  padding: 8px;
-  width: 150px;
-  cursor: pointer;
-  outline: none;
+  border-radius: 50%;
 }
 
 input {
-  border-radius: 20px;
+  border-radius: 8px;
   width: 300px;
   border: solid #d8d8d8 1px;
   padding: 8px;
