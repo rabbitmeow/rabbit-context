@@ -131,14 +131,11 @@ class Context {
       const context = contexts[key]
       return function $ConsumerWrapper({children, ...rest}) {
         return React.createElement(context[$$reactContext].Consumer, null, value => {
-          const props = key in rest ? rest : Object.assign({[key]: value}, rest)
-          return React.isValidElement(children) ? React.cloneElement(children, props) : React.createElement(children, props)
+          return React.cloneElement(children, key in rest ? rest : Object.assign({[key]: value}, rest))
         })
       }
     })
-    wrapped.push(function $ComponentWrapper(props) {
-      return React.createElement(Component, props)
-    })
+    wrapped.push(React.createElement(Component))
     return nestComponents(wrapped, true)
   }
 }
